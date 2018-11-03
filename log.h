@@ -27,6 +27,7 @@ using namespace std;
 
 extern bool g_log_no_exit;
 extern string* g_last_error;
+extern int g_spaces;
 
 // Useful for logging-only arguments.
 #define UNUSED __attribute__((unused))
@@ -36,7 +37,7 @@ extern string* g_last_error;
 #else
 #define LOG(args...)                                             \
   do {                                                           \
-    fprintf(stderr, "*kati*: %s\n", StringPrintf(args).c_str()); \
+    fprintf(stderr, "*kati*: %s%s\n", string(g_spaces, ' ').c_str(), StringPrintf(args).c_str()); \
   } while (0)
 #endif
 

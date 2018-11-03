@@ -321,7 +321,10 @@ void Evaluator::DoInclude(const string& fname) {
   var_list->AppendVar(this, NewLiteral(Intern(TrimLeadingCurdir(fname)).str()));
   for (Stmt* stmt : mk->stmts()) {
     LOG("%s", stmt->DebugString().c_str());
+    g_spaces += 2;
     stmt->Eval(this);
+    g_spaces -= 2;
+    LOG("done %s", stmt->DebugString().c_str());
   }
 }
 

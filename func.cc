@@ -474,7 +474,10 @@ void EvalFunc(const vector<Value*>& args, Evaluator* ev, string*) {
   Parse(*text, ev->loc(), &stmts);
   for (Stmt* stmt : stmts) {
     LOG("%s", stmt->DebugString().c_str());
+    g_spaces += 2;
     stmt->Eval(ev);
+    g_spaces -= 2;
+    LOG("done %s", stmt->DebugString().c_str());
     // delete stmt;
   }
 }
