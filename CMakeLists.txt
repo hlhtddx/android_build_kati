@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.0)
 
 project(ckati CXX)
 
+# Option to disable LOG output (default no)
+option( NOLOG "to disable log output(default no)" OFF )
+
+
+if( NOLOG )
+    message("Disable log outputd")
+    add_definitions(-DNOLOG)
+endif( NOLOG )
+
+
 list(APPEND libckati_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/affinity.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/command.cc

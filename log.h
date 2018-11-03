@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "flags.h"
-#include "log.h"
 #include "stringprintf.h"
 
 using namespace std;
