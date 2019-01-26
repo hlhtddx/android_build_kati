@@ -36,7 +36,8 @@ extern string* g_last_error;
 #define LOG(args...)
 #else
 #define LOG(args...) do {                                           \
-    fprintf(stderr, "*kati*: %s\n", StringPrintf(args).c_str());    \
+    if (g_flags.enable_kati_log)                                    \
+      fprintf(stderr, "*kati*: %s\n", StringPrintf(args).c_str());  \
   } while(0)
 #endif
 
