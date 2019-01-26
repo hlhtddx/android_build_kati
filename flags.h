@@ -29,6 +29,7 @@ struct Flags {
   bool dump_kati_stamp;
   bool enable_debug;
   bool enable_kati_warnings;
+  bool enable_kati_log;
   bool enable_stat_logs;
   bool gen_all_targets;
   bool generate_ninja;

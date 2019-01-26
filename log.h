@@ -35,10 +35,10 @@ extern string* g_last_error;
 #ifdef NOLOG
 #define LOG(args...)
 #else
-#define LOG(args...)                                             \
-  do {                                                           \
-    fprintf(stderr, "*kati*: %s\n", StringPrintf(args).c_str()); \
-  } while (0)
+#define LOG(args...) do {                                           \
+    if (g_flags.enable_kati_log)                                    \
+      fprintf(stderr, "*kati*: %s\n", StringPrintf(args).c_str());  \
+  } while(0)
 #endif
 
 #define LOG_STAT(args...)                                          \
