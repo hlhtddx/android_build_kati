@@ -2,6 +2,20 @@ cmake_minimum_required(VERSION 3.0)
 
 project(ckati CXX)
 
+option(DEBUG_SUPPORT "Debugging support" ON)
+option(DEBUG_DBG_MSG "Debug message for debug feature" OFF)
+
+if( DEBUG_SUPPORT )
+    message("Debug support Enabled")
+    add_definitions(-DDEBUG_SUPPORT)
+    if(DEBUG_DBG_MSG)
+        message("Output more debug message for debugging feature")
+        add_definitions(-DDEBUG_DBG_MSG)
+    endif(DEBUG_DBG_MSG)
+endif( DEBUG_SUPPORT )
+
+include_directories(.)
+
 list(APPEND libckati_SOURCES
     affinity.cc
     command.cc
@@ -35,7 +49,7 @@ list(APPEND libckati_SOURCES
 
 add_definitions(-std=c++14)
 
-add_library(libckati ${libckati_SOURCES} debug.cpp debug.h)
+add_library(libckati ${libckati_SOURCES})
 
 list(APPEND ckati_SOURCES
     main.cc
@@ -46,3 +60,10 @@ add_executable(ckati ${ckati_SOURCES} )
 target_link_libraries( ckati
     libckati
 )
+
+if( DEBUG_SUPPORT )
+    add_subdirectory(debug)
+    target_link_libraries( ckati
+        ckati-debug
+    )
+endif( DEBUG_SUPPORT )
