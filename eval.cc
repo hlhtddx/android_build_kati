@@ -30,6 +30,10 @@
 #include "symtab.h"
 #include "var.h"
 
+#ifdef DEBUG_SUPPORT
+#include "debug/session.h"
+#endif
+
 Evaluator::Evaluator()
     : last_rule_(NULL),
       current_scope_(NULL),
@@ -275,17 +279,32 @@ void Evaluator::EvalIf(const IfStmt* stmt) {
 }
 
 void Evaluator::DoInclude(const string& fname) {
+
   Makefile* mk = MakefileCacheManager::Get()->ReadMakefile(fname);
   if (!mk->Exists()) {
     Error(StringPrintf("%s does not exist", fname.c_str()));
   }
 
+#ifdef DEBUG_SUPPORT
+  auto session = GetCurrentDebugSession();
+  session->EnterFile(Loc(fname.c_str(), 0));
+#endif
+
   Var* var_list = LookupVar(Intern("MAKEFILE_LIST"));
   var_list->AppendVar(this, NewLiteral(Intern(TrimLeadingCurdir(fname)).str()));
   for (Stmt* stmt : mk->stmts()) {
+
+#ifdef DEBUG_SUPPORT
+    session->SetNextLine(stmt->loc());
+#endif
+
     LOG("%s", stmt->DebugString().c_str());
     stmt->Eval(this);
   }
+
+#ifdef DEBUG_SUPPORT
+  session->LeaveFile();
+#endif
 }
 
 void Evaluator::EvalInclude(const IncludeStmt* stmt) {
