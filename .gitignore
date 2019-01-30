@@ -19,4 +19,6 @@ strutil_test
 go_src_stamp
 version.cc
 .idea/
+.vscode/
 cmake-build-*
+build/
