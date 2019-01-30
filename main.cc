@@ -44,6 +44,10 @@
 #include "timeutil.h"
 #include "var.h"
 
+#ifdef DEBUG_SUPPORT
+#include "debug/session.h"
+#endif
+
 static void Init() {
   InitSymtab();
   InitFuncTable();
@@ -166,10 +170,21 @@ static int Run(const vector<Symbol>& targets,
   {
     ScopedTimeReporter tr("eval time");
     Makefile* mk = cache_mgr->ReadMakefile(g_flags.makefile);
+#ifdef DEBUG_SUPPORT
+    auto session = GetCurrentDebugSession();
+    session->EnterFile(Loc(g_flags.makefile, 0));
+#endif
+
     for (Stmt* stmt : mk->stmts()) {
+#ifdef DEBUG_SUPPORT
+      session->SetNextLine(stmt->loc());
+#endif
       LOG("%s", stmt->DebugString().c_str());
       stmt->Eval(ev);
     }
+#ifdef DEBUG_SUPPORT
+    session->LeaveFile();
+#endif
   }
 
   for (ParseErrorStmt* err : GetParseErrors()) {
@@ -259,7 +274,16 @@ int main(int argc, char* argv[]) {
   // This depends on command line flags.
   if (g_flags.use_find_emulator)
     InitFindEmulator();
+
+#ifdef DEBUG_SUPPORT
+  // TODO: the controller should be initiated by program arguments
+  StartDebugSession();
+  auto session = GetCurrentDebugSession();
+#endif
   int r = Run(g_flags.targets, g_flags.cl_vars, orig_args);
+#ifdef DEBUG_SUPPORT
+  StopDebugSession();
+#endif
   Quit();
   return r;
 }
