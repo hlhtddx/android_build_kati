@@ -16,8 +16,6 @@ namespace Debug {
     virtual Message Execute(Session* session, const string& arguments) {
       return Message("error");
     }
-    static DebugCommand* GetErrorCommand();
-    static DebugCommand* GetCommand(const string& command);
    protected:
     const char* tag_;
   };
@@ -66,9 +64,9 @@ namespace Debug {
     Message Execute(Session* session, const string &arguments) override;
   };
 
-  class StepCommand : public DebugCommand {
+  class StepOverCommand : public DebugCommand {
    public:
-    explicit StepCommand() : DebugCommand("step") {}
+    explicit StepOverCommand() : DebugCommand("step") {}
     bool IsValid() const override {
       return true;
     }

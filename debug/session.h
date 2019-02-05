@@ -17,9 +17,20 @@ using namespace std;
 #include "command_interface.h"
 
 namespace Debug {
+
+  class DebugCommand;
+
+  class CommandMap : public unordered_map<string, shared_ptr<DebugCommand>> {
+   public:
+    CommandMap();
+    virtual ~CommandMap() = default;
+  };
+
+
   class Session : public CommandHandler {
    private:
     Controller controller;
+    CommandMap command_map;
 
     //Break Pointers
     vector<Loc> file_stack;
@@ -40,6 +51,8 @@ namespace Debug {
     void CheckBreakPoint();
 
     Message ParseCommand(const Message &command);
+    DebugCommand* GetErrorCommand();
+    DebugCommand* GetCommand(const string& command);
 
    public:
     explicit Session();
