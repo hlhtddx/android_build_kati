@@ -4,42 +4,14 @@
 
 #include <unordered_map>
 #include <regex>
+#include <memory>
+
 using namespace std;
+
 #include "debug_command.h"
 #include "session.h"
 
 namespace Debug {
-  class CommandMap : public unordered_map<string, DebugCommand*> {
-   public:
-    CommandMap() {
-      (*this)["bp"] = new AddBreakPointCommand();
-      (*this)["br"] = new RemoveBreakPointCommand();
-      (*this)["bl"] = new ListBreakPointCommand();
-      (*this)["break"] = new BreakCommand();
-      (*this)["step"] = new StepCommand();
-      (*this)["cont"] = new ContinueCommand();
-      (*this)["default_error"] = new ErrorCommand();
-    }
-    ~CommandMap() {
-      for(const auto &iter: *this) {
-        delete iter.second;
-      }
-    }
-  };
-
-  CommandMap command_map;
-
-  DebugCommand* DebugCommand::GetErrorCommand() {
-    return command_map["default_error"];
-
-  }
-  DebugCommand* DebugCommand::GetCommand(const string &command) {
-    auto iter = command_map.find(command);
-    if (iter != command_map.end()) {
-      return iter->second;
-    }
-    return GetErrorCommand();
-  }
 
   Message AddBreakPointCommand::Execute(Debug::Session *session, const string &arguments) {
     regex pattern_quoted(R"(\"([^\"]+)\"\s+(\d+))");
@@ -92,7 +64,7 @@ namespace Debug {
     return Message(tag_, "OK");
   }
 
-  Message StepCommand::Execute(Debug::Session *session, const string &arguments) {
+  Message StepOverCommand::Execute(Debug::Session *session, const string &arguments) {
     session->Step();
     return Message(tag_, "OK");
   }

@@ -7,6 +7,46 @@ using namespace std;
 
 namespace Debug {
 
+  CommandMap::CommandMap() {
+    auto bp = make_shared<AddBreakPointCommand>();
+    (*this)["bp"] = bp;
+    (*this)["b"] = bp;
+
+    auto br = make_shared<RemoveBreakPointCommand>();
+    (*this)["br"] = br;
+    (*this)["d"] = br;
+
+    auto bl = make_shared<ListBreakPointCommand>();
+    (*this)["bl"] = bl;
+
+    auto brk = make_shared<BreakCommand>();
+    (*this)["break"] = brk;
+
+    auto next = make_shared<StepOverCommand>();
+    (*this)["next"] = next;
+    (*this)["n"] = next;
+
+    auto cont = make_shared<ContinueCommand>();
+    (*this)["cont"] = cont;
+    (*this)["c"] = cont;
+
+    auto error = make_shared<ErrorCommand>();
+    (*this)["_error"] = error;
+  }
+
+  DebugCommand *Session::GetErrorCommand() {
+    return command_map["_error"].get();
+
+  }
+
+  DebugCommand *Session::GetCommand(const string &command) {
+    auto iter = command_map.find(command);
+    if (iter != command_map.end()) {
+      return iter->second.get();
+    }
+    return GetErrorCommand();
+  }
+
   Session* Session::g_session = nullptr;
 
   Session::Session()
@@ -146,10 +186,10 @@ namespace Debug {
     DebugCommand* debug_cmd = nullptr;
     if (regex_match(msg, cmd_match, cmd_pattern)) {
       string cmd = cmd_match[1].str();
-      debug_cmd = DebugCommand::GetCommand(cmd);
+      debug_cmd = GetCommand(cmd);
       return debug_cmd->Execute(this, cmd_match[3].str());
     }
-    debug_cmd = DebugCommand::GetErrorCommand();
+    debug_cmd = GetErrorCommand();
     return debug_cmd->Execute(this, "");
   }
 
