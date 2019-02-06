@@ -29,7 +29,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       regex pattern_quoted(R"(\"([^\"]+)\"\s+(\d+))");
       regex pattern_unquoted(R"(([^\s\"]+)\s+(\d+))");
       smatch matched;
@@ -57,7 +57,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       if (arguments.empty()) {
         session->RemoveAllBreakPointer();
         return Message(tag_, "OK");
@@ -86,7 +86,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       if (!arguments.empty()) {
         return Message("error", "invalid parameter");
       }
@@ -112,7 +112,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       session->Break();
       return Message(tag_, "OK");
     }
@@ -126,7 +126,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       session->Step();
       return Message(tag_, "OK");
     }
@@ -140,7 +140,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       session->Continue();
       return Message(tag_, "OK");
     }
@@ -154,7 +154,7 @@ namespace Debug {
       return true;
     }
 
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       if (!arguments.empty()) {
         return Message("error", "invalid parameter");
       }

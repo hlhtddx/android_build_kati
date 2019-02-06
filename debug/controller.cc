@@ -6,7 +6,7 @@
 #include "session.h"
 
 namespace Debug {
-  Controller::Controller(Session &session)
+  Controller::Controller(SessionBase &session)
         : session_(session)
   {
   }
