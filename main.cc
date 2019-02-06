@@ -269,7 +269,7 @@ static int Run(const vector<Symbol>& targets,
     ScopedTimeReporter tr("eval time");
     Makefile* mk = cache_mgr->ReadMakefile(g_flags.makefile);
 #ifdef DEBUG_SUPPORT
-    auto session = GetCurrentDebugSession();
+    auto session = Debug::GetCurrentDebugSession();
     session->EnterFile(Loc(g_flags.makefile, 0));
 #endif
 
@@ -377,12 +377,11 @@ int main(int argc, char* argv[]) {
 
 #ifdef DEBUG_SUPPORT
   // TODO: the controller should be initiated by program arguments
-  StartDebugSession();
-  auto session = GetCurrentDebugSession();
+  Debug::StartDebugSession();
 #endif
   int r = Run(g_flags.targets, g_flags.cl_vars, orig_args);
 #ifdef DEBUG_SUPPORT
-  StopDebugSession();
+  Debug::StopDebugSession();
 #endif
   Quit();
   return r;

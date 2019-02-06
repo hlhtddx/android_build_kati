@@ -16,7 +16,7 @@ namespace Debug {
 
   class Handler {
    private:
-    thread loop_func_;
+    thread loop_thread_;
     mutex message_mutex_;
     bool is_running_;
     int fd_response_[2];
@@ -24,6 +24,9 @@ namespace Debug {
     string current_command_;
     vector<Message> responses_;
 
+   protected:
+    void WaitForStart();
+    void Start();
     void Loop();
     bool ProcessCommand();
     bool ProcessResponse();
