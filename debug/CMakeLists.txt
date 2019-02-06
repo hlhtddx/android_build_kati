@@ -17,4 +17,4 @@ list(APPEND libckatidebug_SOURCES
         debug_command.h
 )
 
-add_library(ckati-debug ${libckatidebug_SOURCES})
+add_library(ckati-debug ${libckatidebug_SOURCES} connector.cc)

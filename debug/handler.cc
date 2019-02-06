@@ -9,11 +9,12 @@
 
 #define PIPE_FD_READ  0
 #define PIPE_FD_WRITE 1
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
 namespace Debug {
   Handler::Handler()
-        : is_running_(true), loop_func_([this]() { Loop(); }) {
+      : is_running_(true)
+      , loop_thread_([this]() { Loop(); }) {
     pipe(fd_response_);
   }
 
@@ -21,27 +22,55 @@ namespace Debug {
     is_running_ = false;
     close(fd_response_[PIPE_FD_READ]);
     close(fd_response_[PIPE_FD_WRITE]);
-    loop_func_.join();
+    loop_thread_.join();
+  }
+
+  void Handler::WaitForStart() {
+    char c;
+    while(true) {
+      ssize_t nread = read(fd_response_[PIPE_FD_READ], &c, sizeof(c));
+      if (nread >=0) {
+        return;
+      }
+    }
+  }
+
+  void Handler::Start() {
+    char c = 'S';
+    while(true) {
+      ssize_t nwrite = write(fd_response_[PIPE_FD_WRITE], &c, sizeof(c));
+      if (nwrite >=0) {
+        return;
+      }
+    }
   }
 
   void Handler::Loop() {
+    WaitForStart();
     while (is_running_) {
-      pollfd fds[] = {{fd_command_,                POLLIN, 0},
-                      {fd_response_[PIPE_FD_READ], POLLIN, 0}};
-      int npfds = poll(fds, ARRAY_SIZE(fds), 1000);
+      pollfd fds[] = {
+          {
+            .fd = fd_command_,
+            .events = POLLIN,
+            .revents = 0
+          },
+          {
+            .fd = fd_response_[PIPE_FD_READ],
+            .events = POLLIN,
+            .revents = 0
+          }
+      };
+      int npfds = poll(fds, ARRAY_SIZE(fds), 10000);
       if (npfds > 0) {
-        if (fds[0].revents & POLLIN) {
-          if (!ProcessCommand()) {
-            return;
-          }
+        if ((fds[0].revents & POLLIN) != 0 && !ProcessCommand()) {
+          WARN("Failed to process commands. Error=(%s)\n", strerror(errno));
+          return;
         }
-        if (fds[1].revents & POLLIN) {
-          if (!ProcessResponse()) {
-            return;
-          }
+        if ((fds[1].revents & POLLIN) != 0 && !ProcessResponse()) {
+          WARN("Failed to process response. Error=(%s)\n", strerror(errno));
+          return;
         }
       } else if (npfds == 0) {
-//        WARN("Polling timeout\n");
       } else {
         WARN("Error occurs when polling on commands. Error=(%s)\n", strerror(errno));
         return;
@@ -59,6 +88,9 @@ namespace Debug {
       if (*p == '\n') {
         OnCommand(Message(current_command_));
         current_command_.clear();
+      } if (p < buffer + nread - 1 && *p == '\r' && *(++p) == '\n') {
+          OnCommand(Message(current_command_));
+          current_command_.clear();
       } else {
         current_command_.push_back(*p);
       }
