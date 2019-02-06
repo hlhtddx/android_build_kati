@@ -9,7 +9,9 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+
 using namespace std;
+
 #include <unistd.h>
 
 namespace Debug {
@@ -18,14 +20,18 @@ namespace Debug {
     string msg_;
    public:
     explicit Message() = default;
-    explicit Message(const string& command);
+
+    explicit Message(const string &command);
+
     explicit Message(const char *tag);
+
     Message(const char *tag, const char *response);
 
    public:
-    const string& GetMessage() const {
+    const string &GetMessage() const {
       return msg_;
     }
+
     void Clear() {
       msg_.clear();
     }
@@ -52,14 +58,20 @@ namespace Debug {
 
   class Connector {
    public:
+    // Wait for client connected
+    virtual bool WaitForConnection() = 0;
+
+    // Callback when response comes
     virtual void OnResponse(const Message &response) = 0;
 
+    // Get file handle for command (input stream)
     virtual int GetInputHandle() = 0;
 
+    // Get file handle for response (output stream)
     virtual int GetOutputHandle() = 0;
   };
 
-  Connector* GetDefaultConnector();
+  Connector *GetConnector(const char *connector);
 }
 
 #endif // DEBUG_COMMAND_INTERFACE_H

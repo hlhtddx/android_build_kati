@@ -1,7 +1,8 @@
 #include <regex>
+
 using namespace std;
 
-#include <assert.h>
+#include <cassert>
 
 #include "debug_command.h"
 #include "session.h"
@@ -9,12 +10,69 @@ using namespace std;
 
 namespace Debug {
 
-  DebugCommand *Session::GetErrorCommand() {
+  class SessionImpl : public SessionBase {
+   private:
+    Controller controller;
+    CommandMap command_map;
+
+    //Break Pointers
+    deque<Loc> file_stack;
+    unique_ptr<BreakPoints> breakpoints_;
+
+    //Break/Continue/Step Control Flags
+    bool is_paused;
+    mutex break_mutex_;
+    condition_variable broken_cond_;
+
+    //Command Parser
+    string last_command_;
+
+    void SetCurrentFile();
+
+    Message ParseCommand(const Message &command);
+
+    DebugCommand *GetErrorCommand();
+
+    DebugCommand *GetCommand(const string &command);
+
+   public:
+    explicit SessionImpl(const char *client);
+
+    void EnterFile(const Loc &loc) override;
+
+    void LeaveFile() override;
+
+    void SetNextLine(const Loc &loc) override;
+
+    bool ShouldBreak(int lineno) override;
+
+   public:
+    void Break() override;
+
+    void Step() override;
+
+    void Continue() override;
+
+    void AddBreakPointer(const char *path, int lineno) override;
+
+    bool RemoveBreakPointer(int index) override;
+
+    void RemoveAllBreakPointer() override;
+
+    void ForEachBreakPointer(const loc_func& func) override;
+
+    void ForEachFileInStack(const loc_func& func) override;
+
+   public:
+    Message OnCommand(const Message &command) override;
+  };
+
+  DebugCommand *SessionImpl::GetErrorCommand() {
     return command_map["_error"].get();
 
   }
 
-  DebugCommand *Session::GetCommand(const string &command) {
+  DebugCommand *SessionImpl::GetCommand(const string &command) {
     auto iter = command_map.find(command);
     if (iter != command_map.end()) {
       return iter->second.get();
@@ -22,35 +80,14 @@ namespace Debug {
     return GetErrorCommand();
   }
 
-  Session* Session::g_session = nullptr;
-
-  void Session::Start() {
-    if (g_session != nullptr) {
-      return;
-    }
-    g_session = new Session();
-  }
-
-  Session* Session::GetCurrentSession() {
-    return g_session;
-  }
-
-  void Session::Stop() {
-    if (g_session) {
-      delete g_session;
-      g_session = nullptr;
-    }
-  }
-
-  Session::Session()
-        : controller(*this)
-        , is_paused(true)
-  {
+  SessionImpl::SessionImpl(const char *client)
+      : controller(*this), is_paused(true) {
     breakpoints_ = GetBreakPoints();
-    controller.SetConnector(GetDefaultConnector());
+    Connector* connector = GetConnector(client);
+    controller.SetConnector(connector);
   }
 
-  void Session::EnterFile(const Loc& loc) {
+  void SessionImpl::EnterFile(const Loc &loc) {
     unique_lock<mutex> lock(break_mutex_);
     file_stack.push_front(loc);
     SetCurrentFile();
@@ -62,7 +99,7 @@ namespace Debug {
 #endif
   }
 
-  void Session::LeaveFile() {
+  void SessionImpl::LeaveFile() {
     unique_lock<mutex> lock(break_mutex_);
     file_stack.pop_front();
     SetCurrentFile();
@@ -74,7 +111,7 @@ namespace Debug {
 #endif
   }
 
-  void Session::SetNextLine(const Loc& loc) {
+  void SessionImpl::SetNextLine(const Loc &loc) {
     unique_lock<mutex> lock(break_mutex_);
     assert(!file_stack.empty());
     auto &current_file = file_stack.front();
@@ -89,20 +126,19 @@ namespace Debug {
     }
   }
 
-  void Session::SetCurrentFile() {
-    assert (!file_stack.empty());
+  void SessionImpl::SetCurrentFile() {
     auto &current_file = file_stack.front();
-    breakpoints_->SetCurrentFile(current_file.filename);
+    breakpoints_->SetCurrentFile(file_stack.empty() ? string() : current_file.filename);
   }
 
-  bool Session::ShouldBreak(int lineno) {
+  bool SessionImpl::ShouldBreak(int lineno) {
     if (is_paused) {
       return true;
     }
     return breakpoints_->ShouldBreak(lineno);
   }
 
-  void Session::Break() {
+  void SessionImpl::Break() {
     unique_lock<mutex> lock(break_mutex_);
     if (is_paused) {
       return;
@@ -111,14 +147,14 @@ namespace Debug {
     broken_cond_.wait(lock);
   }
 
-  void Session::Step() {
+  void SessionImpl::Step() {
     unique_lock<mutex> lock(break_mutex_);
     is_paused = true;
     broken_cond_.notify_one();
     broken_cond_.wait(lock);
   }
 
-  void Session::Continue() {
+  void SessionImpl::Continue() {
     unique_lock<mutex> lock(break_mutex_);
     if (!is_paused) {
       return;
@@ -127,44 +163,44 @@ namespace Debug {
     broken_cond_.notify_one();
   }
 
-  void Session::AddBreakPointer(const char *path, int lineno) {
+  void SessionImpl::AddBreakPointer(const char *path, int lineno) {
     unique_lock<mutex> lock(break_mutex_);
     breakpoints_->Insert(path, lineno);
     SetCurrentFile();
   }
 
-  bool Session::RemoveBreakPointer(int index) {
+  bool SessionImpl::RemoveBreakPointer(int index) {
     unique_lock<mutex> lock(break_mutex_);
-    if (!breakpoints_->Remove(index)){
+    if (!breakpoints_->Remove(index)) {
       return false;
     }
     SetCurrentFile();
     return true;
   }
 
-  void Session::RemoveAllBreakPointer() {
+  void SessionImpl::RemoveAllBreakPointer() {
     unique_lock<mutex> lock(break_mutex_);
     breakpoints_->RemoveAll();
     SetCurrentFile();
   }
 
-  void Session::ForEachBreakPointer(loc_func func) {
+  void SessionImpl::ForEachBreakPointer(const loc_func& func) {
     unique_lock<mutex> lock(break_mutex_);
     int index = 0;
-    for (const auto& bp: breakpoints_->GetList()) {
+    for (const auto &bp: breakpoints_->GetList()) {
       func(++index, bp.filename, bp.lineno);
     }
   }
 
-  void Session::ForEachFileInStack(loc_func func) {
+  void SessionImpl::ForEachFileInStack(const loc_func& func) {
     unique_lock<mutex> lock(break_mutex_);
     int index = 0;
-    for (const auto& loc: file_stack) {
+    for (const auto &loc: file_stack) {
       func(++index, loc.filename, loc.lineno);
     }
   }
 
-  Message Session::ParseCommand(const Message &command) {
+  Message SessionImpl::ParseCommand(const Message &command) {
     string msg = command.GetMessage();
     if (msg.empty() && !last_command_.empty()) {
       msg = last_command_;
@@ -175,7 +211,7 @@ namespace Debug {
     regex cmd_pattern(R"(([a-zA-Z][^\s]*)(\s+(.+))?)");
     smatch cmd_match;
 
-    DebugCommand* debug_cmd = nullptr;
+    DebugCommand *debug_cmd = nullptr;
     if (regex_match(msg, cmd_match, cmd_pattern)) {
       string cmd = cmd_match[1].str();
       debug_cmd = GetCommand(cmd);
@@ -185,19 +221,31 @@ namespace Debug {
     return debug_cmd->Execute(this, "");
   }
 
-  Message Session::OnCommand(const Message &command) {
+  Message SessionImpl::OnCommand(const Message &command) {
     return ParseCommand(command);
   }
-}
 
-void StartDebugSession() {
-  Debug::Session::Start();
-}
+  Session *g_session = nullptr;
 
-Debug::Session* GetCurrentDebugSession() {
-  return Debug::Session::GetCurrentSession();
-}
+  void StartDebugSession() {
+    const char *debug_flag = getenv("KATI_DEBUG_FLAG");
+    const char *debug_client = getenv("KATI_DEBUG_CLIENT");
+    bool debug_enabled = debug_flag != nullptr && (strcmp(debug_flag, "true") == 0 || strcmp(debug_flag, "TRUE") == 0);
+    if (debug_enabled) {
+      g_session = new SessionImpl(debug_client);
+    } else {
+      g_session = new Session();
+    }
+  }
 
-void StopDebugSession() {
-  Debug::Session::Stop();
+  void StopDebugSession() {
+    if (g_session != nullptr) {
+      delete g_session;
+      g_session = nullptr;
+    }
+  }
+
+  Session *GetCurrentDebugSession() {
+    return g_session;
+  }
 }

@@ -15,21 +15,13 @@ namespace Debug {
   class ErrorCommand : public DebugCommand {
    public:
     explicit ErrorCommand() : DebugCommand("error") {}
-
-    bool IsValid() const override {
-      return false;
-    }
   };
 
   class AddBreakPointCommand : public DebugCommand {
    public:
     explicit AddBreakPointCommand() : DebugCommand("bp") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       regex pattern_quoted(R"(\"([^\"]+)\"\s+(\d+))");
       regex pattern_unquoted(R"(([^\s\"]+)\s+(\d+))");
       smatch matched;
@@ -53,11 +45,7 @@ namespace Debug {
    public:
     explicit RemoveBreakPointCommand() : DebugCommand("br") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       if (arguments.empty()) {
         session->RemoveAllBreakPointer();
         return Message(tag_, "OK");
@@ -82,11 +70,7 @@ namespace Debug {
    public:
     explicit ListBreakPointCommand() : DebugCommand("bl") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       if (!arguments.empty()) {
         return Message("error", "invalid parameter");
       }
@@ -108,11 +92,7 @@ namespace Debug {
    public:
     explicit BreakCommand() : DebugCommand("break") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       session->Break();
       return Message(tag_, "OK");
     }
@@ -122,11 +102,7 @@ namespace Debug {
    public:
     explicit StepOverCommand() : DebugCommand("step") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       session->Step();
       return Message(tag_, "OK");
     }
@@ -136,11 +112,7 @@ namespace Debug {
    public:
     explicit ContinueCommand() : DebugCommand("cont") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       session->Continue();
       return Message(tag_, "OK");
     }
@@ -150,11 +122,7 @@ namespace Debug {
    public:
     explicit BackTraceCommand() : DebugCommand("bt") {}
 
-    bool IsValid() const override {
-      return true;
-    }
-
-    Message Execute(Session *session, const string &arguments) override {
+    Message Execute(SessionBase *session, const string &arguments) override {
       if (!arguments.empty()) {
         return Message("error", "invalid parameter");
       }

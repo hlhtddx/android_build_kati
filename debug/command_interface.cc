@@ -18,28 +18,4 @@ namespace Debug {
     WriteLine(tag, response);
     EndResponse();
   }
-
-  class DefaultConnector : public Connector {
-   public:
-    DefaultConnector() = default;
-
-    virtual ~DefaultConnector() = default;
-
-   protected:
-    void OnResponse(const Message &response) override {
-      response.Write(GetOutputHandle());
-    }
-
-    int GetInputHandle() override {
-      return fileno(stdin);
-    }
-
-    int GetOutputHandle() override {
-      return fileno(stdout);
-    }
-  };
-
-  Connector *GetDefaultConnector() {
-    return new DefaultConnector;
-  }
 }

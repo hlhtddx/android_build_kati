@@ -286,7 +286,7 @@ void Evaluator::DoInclude(const string& fname) {
   }
 
 #ifdef DEBUG_SUPPORT
-  auto session = GetCurrentDebugSession();
+  auto session = Debug::GetCurrentDebugSession();
   session->EnterFile(Loc(fname.c_str(), 0));
 #endif
 
