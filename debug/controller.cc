@@ -8,7 +8,6 @@
 namespace Debug {
   Controller::Controller(Session &session)
         : session_(session)
-        , connector_(GetDefaultConnector())
   {
   }
 

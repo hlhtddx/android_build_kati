@@ -49,15 +49,6 @@ namespace Debug {
 
   Session* Session::g_session = nullptr;
 
-  Session::Session()
-        : controller(*this)
-        , breakable_file(nullptr)
-        , next_lineno(0)
-        , is_paused(false)
-  {
-    controller.SetConnector(GetDefaultConnector());
-  }
-
   void Session::Start() {
     if (g_session != nullptr) {
       return;
@@ -76,13 +67,18 @@ namespace Debug {
     }
   }
 
+  Session::Session()
+        : controller(*this)
+        , is_paused(true)
+  {
+    breakpoints_ = GetBreakPoints();
+    controller.SetConnector(GetDefaultConnector());
+  }
+
   void Session::EnterFile(const Loc& loc) {
-    if (!file_stack.empty()) {
-      auto &current_file = file_stack.back();
-      current_file.lineno = next_lineno;
-    }
-    file_stack.emplace_back(loc);
-    CheckBreakPoint();
+    unique_lock<mutex> lock(break_mutex_);
+    file_stack.push(loc);
+    SetCurrentFile();
 #ifdef DEBUG_DBG_MSG
     printf("Enter file\n");
     for(auto iter = file_stack.begin(); iter != file_stack.end(); iter++) {
@@ -92,8 +88,9 @@ namespace Debug {
   }
 
   void Session::LeaveFile() {
-    file_stack.pop_back();
-    CheckBreakPoint();
+    unique_lock<mutex> lock(break_mutex_);
+    file_stack.pop();
+    SetCurrentFile();
 #ifdef DEBUG_DBG_MSG
     printf("Leave file\n");
     for(auto iter = file_stack.begin(); iter != file_stack.end(); iter++) {
@@ -103,32 +100,25 @@ namespace Debug {
   }
 
   void Session::SetNextLine(const Loc& loc) {
-    next_lineno = loc.lineno;
     unique_lock<mutex> lock(break_mutex_);
-    if (ShouldBreak()) {
+    if (ShouldBreak(loc.lineno)) {
       WARN_LOC(loc, "Break at breakpoint");
       break_cond_.wait(lock);
       WARN_LOC(loc, "Continue breakpoint");
     }
   }
 
-  void Session::CheckBreakPoint() {
-    if (file_stack.empty()) {
-      return;
-    }
-    auto &current_file = file_stack.back();
-    auto iter = bp_map.find(current_file.filename);
-    breakable_file = (iter == bp_map.end()) ? nullptr : &(iter->second);
+  void Session::SetCurrentFile() {
+    assert (!file_stack.empty());
+    auto &current_file = file_stack.top();
+    breakpoints_->SetCurrentFile(current_file.filename);
   }
 
-  bool Session::ShouldBreak() {
+  bool Session::ShouldBreak(int lineno) {
     if (is_paused) {
       return true;
     }
-    if (breakable_file == nullptr) {
-      return false;
-    }
-    return breakable_file->ShouldBreak(next_lineno);
+    return breakpoints_->ShouldBreak(lineno);
   }
 
   void Session::Break() {
@@ -156,20 +146,31 @@ namespace Debug {
 
   void Session::AddBreakPointer(const char *path, int lineno) {
     unique_lock<mutex> lock(break_mutex_);
-    bp_map.AddBreakPointer(path, lineno);
-    CheckBreakPoint();
+    breakpoints_->Insert(path, lineno);
+    SetCurrentFile();
   }
 
-  void Session::RemoveBreakPointer(const char *path, int lineno) {
+  bool Session::RemoveBreakPointer(int index) {
     unique_lock<mutex> lock(break_mutex_);
-    bp_map.RemoveBreakPointer(path, lineno);
-    CheckBreakPoint();
+    if (!breakpoints_->Remove(index)){
+      return false;
+    }
+    SetCurrentFile();
+    return true;
   }
 
   void Session::RemoveAllBreakPointer() {
     unique_lock<mutex> lock(break_mutex_);
-    bp_map.RemoveAllBreakPoints();
-    CheckBreakPoint();
+    breakpoints_->RemoveAll();
+    SetCurrentFile();
+  }
+
+  void Session::ForeachBreakPointer(bp_func func) {
+    unique_lock<mutex> lock(break_mutex_);
+    int index = 0;
+    for (const auto& bp: breakpoints_->GetList()) {
+      func(++index, bp);
+    }
   }
 
   Message Session::ParseCommand(const Message &command) {

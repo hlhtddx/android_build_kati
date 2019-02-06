@@ -53,6 +53,8 @@ namespace Debug {
       return true;
     }
     Message Execute(Session* session, const string &arguments) override;
+   private:
+    Message msg_;
   };
 
   class BreakCommand : public DebugCommand {
