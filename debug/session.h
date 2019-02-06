@@ -5,7 +5,9 @@
 #ifndef DEBUG_SESSION_H
 #define DEBUG_SESSION_H
 
-#include <vector>
+#include <functional>
+#include <stack>
+#include <unordered_map>
 #include <mutex>
 #include <condition_variable>
 
@@ -33,10 +35,8 @@ namespace Debug {
     CommandMap command_map;
 
     //Break Pointers
-    vector<Loc> file_stack;
-    BreakPointMap bp_map;
-    BreakPointFile *breakable_file;
-    int next_lineno;
+    stack<Loc> file_stack;
+    unique_ptr<BreakPoints> breakpoints_;
 
     //Break/Continue/Step Control Flags
     bool is_paused;
@@ -48,7 +48,7 @@ namespace Debug {
 
     static Session *g_session;
 
-    void CheckBreakPoint();
+    void SetCurrentFile();
 
     Message ParseCommand(const Message &command);
     DebugCommand* GetErrorCommand();
@@ -69,15 +69,17 @@ namespace Debug {
 
     void SetNextLine(const Loc &loc);
 
-    bool ShouldBreak();
+    bool ShouldBreak(int lineno);
 
    public:
     void Break();
     void Step();
     void Continue();
     void AddBreakPointer(const char *path, int lineno);
-    void RemoveBreakPointer(const char *path, int lineno);
+    bool RemoveBreakPointer(int index);
     void RemoveAllBreakPointer();
+    typedef function<void(int,const BreakPoint&)> bp_func;
+    void ForeachBreakPointer(bp_func func);
 
    public:
     Message OnCommand(const Message &command) override;

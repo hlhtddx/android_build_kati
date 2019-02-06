@@ -6,44 +6,51 @@
 #define DEBUG_BREAKPOINT_H
 
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include "strutil.h"
-
+#include <vector>
 using namespace std;
 
 namespace Debug {
-  class BreakPointFile {
-   private:
-    unordered_set<int> lineno_list_;
-   public:
-    void AddLine(int lineno) {
-      lineno_list_.insert(lineno);
+
+  struct BreakPoint {
+    string filename;
+    int lineno;
+
+    BreakPoint(const char *path, int l)
+        : filename(path), lineno(l) {
     }
 
-    void RemoveLine(int lineno) {
-      lineno_list_.erase(lineno);
-    }
-
-    size_t GetLineCount() {
-      return lineno_list_.size();
-    }
-
-    bool ShouldBreak(int lineno) {
-      return lineno_list_.find(lineno) != lineno_list_.end();
+    static bool Compare(const BreakPoint &bp1, const BreakPoint &bp2) {
+      if (bp1.filename < bp2.filename) {
+        return true;
+      } else if (bp1.filename == bp2.filename) {
+        return bp1.lineno < bp2.lineno;
+      }
+      return false;
     }
   };
 
-  class BreakPointMap : public unordered_map<string, BreakPointFile> {
+  class BreakPoints {
    public:
+    //Insert a new break point. Do nothing if exists
+    virtual void Insert(const char *path, int lineno) = 0;
 
-    void AddBreakPointer(const char* path, int lineno);
+    //Remove a break point. Do nothing if not exist
+    virtual bool Remove(int index) = 0;
 
-    void RemoveBreakPointer(const char* path, int lineno);
+    //Remove all break points. Do nothing if not exist
+    virtual void RemoveAll() = 0;
 
-    void RemoveAllBreakPoints();
+    //Remove a vector of all break points.
+    virtual const vector<BreakPoint>& GetList() = 0;
+
+    //Set current file that is being parsed, to check the break point
+    virtual void SetCurrentFile(const string &path) = 0;
+
+    //Return true if it should be broken at current line
+    virtual bool ShouldBreak(int lineno) = 0;
   };
 
+  unique_ptr<BreakPoints> GetBreakPoints();
 }
 
 #endif // DEBUG_BREAKPOINT_H

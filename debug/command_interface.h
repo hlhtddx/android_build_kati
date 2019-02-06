@@ -17,6 +17,7 @@ namespace Debug {
    private:
     string msg_;
    public:
+    explicit Message() = default;
     explicit Message(const string& command);
     explicit Message(const char *tag);
     Message(const char *tag, const char *response);
@@ -25,15 +26,18 @@ namespace Debug {
     const string& GetMessage() const {
       return msg_;
     }
+    void Clear() {
+      msg_.clear();
+    }
 
     void WriteLine(const char *tag, const char *response = nullptr) {
-      msg_ += '<';
-      msg_ += tag;
-      msg_ += '>';
+      stringstream line;
+      line << '<' << tag << '>';
       if (response != nullptr) {
-        msg_ += response;
+        line << response;
       }
-      msg_ += '\n';
+      line << endl;
+      msg_ += line.str();
     }
 
     void EndResponse() {
