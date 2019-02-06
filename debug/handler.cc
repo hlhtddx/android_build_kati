@@ -32,11 +32,13 @@ namespace Debug {
       if (npfds > 0) {
         if (fds[0].revents & POLLIN) {
           if (!ProcessCommand()) {
+            WARN("Failed to process commands. Error=(%s)\n", strerror(errno));
             return;
           }
         }
         if (fds[1].revents & POLLIN) {
           if (!ProcessResponse()) {
+            WARN("Failed to process response. Error=(%s)\n", strerror(errno));
             return;
           }
         }

@@ -21,68 +21,46 @@ using namespace std;
 
 namespace Debug {
 
-  class Session : public CommandHandler {
-   private:
-    Controller controller;
-    CommandMap command_map;
-
-    //Break Pointers
-    deque<Loc> file_stack;
-    unique_ptr<BreakPoints> breakpoints_;
-
-    //Break/Continue/Step Control Flags
-    bool is_paused;
-    mutex break_mutex_;
-    condition_variable broken_cond_;
-
-    //Command Parser
-    string last_command_;
-
-    static Session *g_session;
-
-    void SetCurrentFile();
-
-    Message ParseCommand(const Message &command);
-    DebugCommand* GetErrorCommand();
-    DebugCommand* GetCommand(const string& command);
-
+  class Session {
    public:
-    explicit Session();
+    virtual void EnterFile(const Loc &loc) {}
 
-    static void Start();
+    virtual void LeaveFile() {}
 
-    static Session *GetCurrentSession();
+    virtual void SetNextLine(const Loc &loc) {}
 
-    static void Stop();
+    virtual bool ShouldBreak(int lineno) { return false; }
 
-    void EnterFile(const Loc &loc);
-
-    void LeaveFile();
-
-    void SetNextLine(const Loc &loc);
-
-    bool ShouldBreak(int lineno);
-
-   public:
-    void Break();
-    void Step();
-    void Continue();
-    void AddBreakPointer(const char *path, int lineno);
-    bool RemoveBreakPointer(int index);
-    void RemoveAllBreakPointer();
-    typedef function<void(int,const string&,int)> loc_func;
-    void ForEachBreakPointer(loc_func func);
-    void ForEachFileInStack(loc_func func);
-
-   public:
-    Message OnCommand(const Message &command) override;
   };
+
+ class SessionBase : public Session, public CommandHandler {
+   public:
+    virtual void Break()= 0;
+
+    virtual void Step()= 0;
+
+    virtual void Continue()= 0;
+
+    virtual void AddBreakPointer(const char *path, int lineno)= 0;
+
+    virtual bool RemoveBreakPointer(int index)= 0;
+
+    virtual void RemoveAllBreakPointer()= 0;
+
+    typedef function<void(int, const string &, int)> loc_func;
+
+    virtual void ForEachBreakPointer(const loc_func &func)= 0;
+
+    virtual void ForEachFileInStack(const loc_func &func)= 0;
+
+    virtual Message OnCommand(const Message &command)= 0;
+  };
+
+  void StartDebugSession();
+
+  void StopDebugSession();
+
+  Session *GetCurrentDebugSession();
 }
-
-void StartDebugSession();
-
-Debug::Session *GetCurrentDebugSession();
-
-void StopDebugSession();
 
 #endif // DEBUG_SESSION_H

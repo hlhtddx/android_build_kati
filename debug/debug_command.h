@@ -10,12 +10,12 @@
 using namespace std;
 
 namespace Debug {
-  class Session;
+  class SessionBase;
   class DebugCommand {
    public:
     explicit DebugCommand(const char* tag) : tag_(tag) {}
     virtual bool IsValid() const { return true; }
-    virtual Message Execute(Session* session, const string& arguments) {
+    virtual Message Execute(SessionBase* session, const string& arguments) {
       return Message("error");
     }
    protected:
