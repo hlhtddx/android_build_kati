@@ -6,6 +6,8 @@
 #define DEBUG_COMMAND_H
 
 #include "command_interface.h"
+#include <unordered_map>
+using namespace std;
 
 namespace Debug {
   class Session;
@@ -20,68 +22,10 @@ namespace Debug {
     const char* tag_;
   };
 
-  class ErrorCommand : public DebugCommand {
+  class CommandMap : public unordered_map<string, shared_ptr<DebugCommand>> {
    public:
-    explicit ErrorCommand() : DebugCommand("error") {}
-    bool IsValid() const override {
-      return false;
-    }
-  };
-
-  class AddBreakPointCommand : public DebugCommand {
-   public:
-    explicit AddBreakPointCommand() : DebugCommand("bp") {}
-    bool IsValid() const override {
-      return true;
-    }
-    Message Execute(Session* session, const string& arguments) override;
-  };
-
-  class RemoveBreakPointCommand : public DebugCommand {
-   public:
-    explicit RemoveBreakPointCommand() : DebugCommand("br") {}
-    bool IsValid() const override {
-      return true;
-    }
-    Message Execute(Session* session, const string& arguments) override;
-  };
-
-  class ListBreakPointCommand : public DebugCommand {
-   public:
-    explicit ListBreakPointCommand() : DebugCommand("bl") {}
-    bool IsValid() const override {
-      return true;
-    }
-    Message Execute(Session* session, const string &arguments) override;
-   private:
-    Message msg_;
-  };
-
-  class BreakCommand : public DebugCommand {
-   public:
-    explicit BreakCommand() : DebugCommand("break") {}
-    bool IsValid() const override {
-      return true;
-    }
-    Message Execute(Session* session, const string &arguments) override;
-  };
-
-  class StepOverCommand : public DebugCommand {
-   public:
-    explicit StepOverCommand() : DebugCommand("step") {}
-    bool IsValid() const override {
-      return true;
-    }
-    Message Execute(Session* session, const string &arguments) override;
-  };
-
-  class ContinueCommand : public DebugCommand {
-   public:
-    explicit ContinueCommand() : DebugCommand("cont") {}
-    bool IsValid() const override {
-      return true;
-    }
-    Message Execute(Session* session, const string &arguments) override;
+    CommandMap();
+    virtual ~CommandMap() = default;
   };
 
 }
