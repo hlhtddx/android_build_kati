@@ -8,7 +8,7 @@
 #include "handler.h"
 
 namespace Debug {
-  class Session;
+  class SessionBase;
 
   class CommandHandler {
    public:
@@ -17,13 +17,13 @@ namespace Debug {
 
   class Controller : public Handler {
    private:
-    Session &session_;
+    SessionBase &session_;
     Connector *connector_;
 
    public:
-    explicit Controller(Session &session);
+    explicit Controller(SessionBase &session);
 
-    void SetConnector(Connector* connector) {
+    void SetConnector(Connector *connector) {
       connector_ = connector;
       SetCommandHandle(connector_->GetInputHandle());
     }

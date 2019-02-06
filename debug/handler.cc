@@ -9,11 +9,11 @@
 
 #define PIPE_FD_READ  0
 #define PIPE_FD_WRITE 1
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 
 namespace Debug {
   Handler::Handler()
-        : is_running_(true), loop_func_([this]() { Loop(); }) {
+      : is_running_(true), loop_func_([this]() { Loop(); }) {
     pipe(fd_response_);
   }
 
@@ -30,15 +30,13 @@ namespace Debug {
                       {fd_response_[PIPE_FD_READ], POLLIN, 0}};
       int npfds = poll(fds, ARRAY_SIZE(fds), 1000);
       if (npfds > 0) {
-        if (fds[0].revents & POLLIN) {
-          if (!ProcessCommand()) {
-            return;
-          }
+        if ((fds[0].revents & POLLIN) != 0 && !ProcessCommand()) {
+          WARN("Failed to process commands. Error=(%s)\n", strerror(errno));
+          return;
         }
-        if (fds[1].revents & POLLIN) {
-          if (!ProcessResponse()) {
-            return;
-          }
+        if ((fds[1].revents & POLLIN) != 0 && !ProcessResponse()) {
+          WARN("Failed to process response. Error=(%s)\n", strerror(errno));
+          return;
         }
       } else if (npfds == 0) {
 //        WARN("Polling timeout\n");
