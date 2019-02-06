@@ -6,7 +6,7 @@
 #define DEBUG_SESSION_H
 
 #include <functional>
-#include <stack>
+#include <deque>
 #include <unordered_map>
 #include <mutex>
 #include <condition_variable>
@@ -17,17 +17,9 @@ using namespace std;
 #include "breakpoint.h"
 #include "controller.h"
 #include "command_interface.h"
+#include "debug_command.h"
 
 namespace Debug {
-
-  class DebugCommand;
-
-  class CommandMap : public unordered_map<string, shared_ptr<DebugCommand>> {
-   public:
-    CommandMap();
-    virtual ~CommandMap() = default;
-  };
-
 
   class Session : public CommandHandler {
    private:
@@ -35,13 +27,13 @@ namespace Debug {
     CommandMap command_map;
 
     //Break Pointers
-    stack<Loc> file_stack;
+    deque<Loc> file_stack;
     unique_ptr<BreakPoints> breakpoints_;
 
     //Break/Continue/Step Control Flags
     bool is_paused;
     mutex break_mutex_;
-    condition_variable break_cond_;
+    condition_variable broken_cond_;
 
     //Command Parser
     string last_command_;
@@ -78,8 +70,9 @@ namespace Debug {
     void AddBreakPointer(const char *path, int lineno);
     bool RemoveBreakPointer(int index);
     void RemoveAllBreakPointer();
-    typedef function<void(int,const BreakPoint&)> bp_func;
-    void ForeachBreakPointer(bp_func func);
+    typedef function<void(int,const string&,int)> loc_func;
+    void ForEachBreakPointer(loc_func func);
+    void ForEachFileInStack(loc_func func);
 
    public:
     Message OnCommand(const Message &command) override;

@@ -1,38 +1,13 @@
 #include <regex>
 using namespace std;
 
+#include <assert.h>
+
 #include "debug_command.h"
 #include "session.h"
 #include "log.h"
 
 namespace Debug {
-
-  CommandMap::CommandMap() {
-    auto bp = make_shared<AddBreakPointCommand>();
-    (*this)["bp"] = bp;
-    (*this)["b"] = bp;
-
-    auto br = make_shared<RemoveBreakPointCommand>();
-    (*this)["br"] = br;
-    (*this)["d"] = br;
-
-    auto bl = make_shared<ListBreakPointCommand>();
-    (*this)["bl"] = bl;
-
-    auto brk = make_shared<BreakCommand>();
-    (*this)["break"] = brk;
-
-    auto next = make_shared<StepOverCommand>();
-    (*this)["next"] = next;
-    (*this)["n"] = next;
-
-    auto cont = make_shared<ContinueCommand>();
-    (*this)["cont"] = cont;
-    (*this)["c"] = cont;
-
-    auto error = make_shared<ErrorCommand>();
-    (*this)["_error"] = error;
-  }
 
   DebugCommand *Session::GetErrorCommand() {
     return command_map["_error"].get();
@@ -77,7 +52,7 @@ namespace Debug {
 
   void Session::EnterFile(const Loc& loc) {
     unique_lock<mutex> lock(break_mutex_);
-    file_stack.push(loc);
+    file_stack.push_front(loc);
     SetCurrentFile();
 #ifdef DEBUG_DBG_MSG
     printf("Enter file\n");
@@ -89,7 +64,7 @@ namespace Debug {
 
   void Session::LeaveFile() {
     unique_lock<mutex> lock(break_mutex_);
-    file_stack.pop();
+    file_stack.pop_front();
     SetCurrentFile();
 #ifdef DEBUG_DBG_MSG
     printf("Leave file\n");
@@ -101,16 +76,22 @@ namespace Debug {
 
   void Session::SetNextLine(const Loc& loc) {
     unique_lock<mutex> lock(break_mutex_);
+    assert(!file_stack.empty());
+    auto &current_file = file_stack.front();
+    current_file.lineno = loc.lineno;
     if (ShouldBreak(loc.lineno)) {
-      WARN_LOC(loc, "Break at breakpoint");
-      break_cond_.wait(lock);
-      WARN_LOC(loc, "Continue breakpoint");
+      stringstream position;
+      position << loc.filename << ':' << loc.lineno;
+      Message msg("current", position.str().c_str());
+      controller.SendResponse(msg);
+      broken_cond_.notify_one();
+      broken_cond_.wait(lock);
     }
   }
 
   void Session::SetCurrentFile() {
     assert (!file_stack.empty());
-    auto &current_file = file_stack.top();
+    auto &current_file = file_stack.front();
     breakpoints_->SetCurrentFile(current_file.filename);
   }
 
@@ -127,12 +108,14 @@ namespace Debug {
       return;
     }
     is_paused = true;
+    broken_cond_.wait(lock);
   }
 
   void Session::Step() {
     unique_lock<mutex> lock(break_mutex_);
     is_paused = true;
-    break_cond_.notify_all();
+    broken_cond_.notify_one();
+    broken_cond_.wait(lock);
   }
 
   void Session::Continue() {
@@ -141,7 +124,7 @@ namespace Debug {
       return;
     }
     is_paused = false;
-    break_cond_.notify_all();
+    broken_cond_.notify_one();
   }
 
   void Session::AddBreakPointer(const char *path, int lineno) {
@@ -165,11 +148,19 @@ namespace Debug {
     SetCurrentFile();
   }
 
-  void Session::ForeachBreakPointer(bp_func func) {
+  void Session::ForEachBreakPointer(loc_func func) {
     unique_lock<mutex> lock(break_mutex_);
     int index = 0;
     for (const auto& bp: breakpoints_->GetList()) {
-      func(++index, bp);
+      func(++index, bp.filename, bp.lineno);
+    }
+  }
+
+  void Session::ForEachFileInStack(loc_func func) {
+    unique_lock<mutex> lock(break_mutex_);
+    int index = 0;
+    for (const auto& loc: file_stack) {
+      func(++index, loc.filename, loc.lineno);
     }
   }
 
