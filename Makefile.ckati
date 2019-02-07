@@ -51,6 +51,17 @@ KATI_CXX_SRCS := \
 	timeutil.cc \
 	var.cc
 
+KATI_DEBUG_SRC := \
+	breakpoint.cc \
+	command_interface.cc \
+	connector.cc \
+	session.cc \
+	controller.cc \
+	handler.cc \
+	debug_command.cc
+
+KATI_CXX_SRCS += $(addprefix debug/,$(KATI_DEBUG_SRC))
+
 KATI_CXX_GENERATED_SRCS := \
 	version.cc
 
@@ -71,8 +82,9 @@ KATI_CXX_TEST_EXES := $(patsubst $(KATI_INTERMEDIATES_PATH)/%.o,$(KATI_BIN_PATH)
 	$(KATI_CXX_TEST_OBJS))
 
 KATI_CXXFLAGS := -g -W -Wall -MMD -MP
-KATI_CXXFLAGS += -O -DNOLOG
+KATI_CXXFLAGS += -O -DDEBUG_DBG_MSG
 KATI_CXXFLAGS += -march=native
+KATI_CXXFLAGS += -I$(KATI_SRC_PATH)
 #KATI_CXXFLAGS += -pg
 
 ifeq ($(shell uname),Linux)
@@ -82,17 +94,17 @@ endif
 # Rule to build ckati into KATI_BIN_PATH
 $(KATI_BIN_PATH)/ckati: $(KATI_CXX_OBJS) $(KATI_CXX_GENERATED_OBJS)
 	@mkdir -p $(dir $@)
-	$(KATI_LD) -std=c++11 $(KATI_CXXFLAGS) -o $@ $^ $(KATI_LIBS)
+	$(KATI_LD) -std=c++14 $(KATI_CXXFLAGS) -o $@ $^ $(KATI_LIBS)
 
 # Rule to build normal source files into object files in KATI_INTERMEDIATES_PATH
 $(KATI_CXX_OBJS) $(KATI_CXX_TEST_OBJS): $(KATI_INTERMEDIATES_PATH)/%.o: $(KATI_SRC_PATH)/%.cc
 	@mkdir -p $(dir $@)
-	$(KATI_CXX) -c -std=c++11 $(KATI_CXXFLAGS) -o $@ $<
+	$(KATI_CXX) -c -std=c++14 $(KATI_CXXFLAGS) -o $@ $<
 
 # Rule to build generated source files into object files in KATI_INTERMEDIATES_PATH
 $(KATI_CXX_GENERATED_OBJS): $(KATI_INTERMEDIATES_PATH)/%.o: $(KATI_INTERMEDIATES_PATH)/%.cc
 	@mkdir -p $(dir $@)
-	$(KATI_CXX) -c -std=c++11 $(KATI_CXXFLAGS) -o $@ $<
+	$(KATI_CXX) -c -std=c++14 $(KATI_CXXFLAGS) -o $@ $<
 
 ckati_tests: $(KATI_CXX_TEST_EXES)
 
@@ -125,6 +137,8 @@ ckati_clean:
 	rm -rf $(KATI_INTERMEDIATES_PATH)/ckati
 	rm -rf $(KATI_INTERMEDIATES_PATH)/*.o
 	rm -rf $(KATI_INTERMEDIATES_PATH)/*.d
+	rm -rf $(KATI_INTERMEDIATES_PATH)/debug/*.o
+	rm -rf $(KATI_INTERMEDIATES_PATH)/debug/*.d
 	rm -rf $(KATI_INTERMEDIATES_PATH)/version.cc
 	rm -rf $(KATI_CXX_TEST_EXES)
 	rm -rf out
