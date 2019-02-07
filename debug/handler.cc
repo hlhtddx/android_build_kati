@@ -86,11 +86,11 @@ namespace Debug {
     }
     for (char *p = buffer; p < buffer + nread; p++) {
       if (*p == '\n') {
+        if (!current_command_.empty() && current_command_.back() == '\r') {
+          current_command_.pop_back();
+        }
         OnCommand(Message(current_command_));
         current_command_.clear();
-      } if (p < buffer + nread - 1 && *p == '\r' && *(++p) == '\n') {
-          OnCommand(Message(current_command_));
-          current_command_.clear();
       } else {
         current_command_.push_back(*p);
       }
