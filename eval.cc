@@ -314,7 +314,6 @@ void Evaluator::EvalIf(const IfStmt* stmt) {
 }
 
 void Evaluator::DoInclude(const string& fname) {
-  CheckStack();
 
   Makefile* mk = MakefileCacheManager::Get()->ReadMakefile(fname);
   if (!mk->Exists()) {
